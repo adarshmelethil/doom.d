@@ -8,3 +8,4 @@
 
 (package! org-super-agenda)
 (package! clj-refactor)
+(package! google-this)

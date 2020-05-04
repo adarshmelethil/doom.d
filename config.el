@@ -120,3 +120,13 @@
             (setq answer (+ (expt 10 field-width) answer)))
           (replace-match (format (concat "%0" (int-to-string field-width) "d")
                                  answer)))))))
+
+(defun vterm-send-escape()
+  (interactive)
+  (vterm-send-key "<escape>"))
+(general-define-key
+  :states '(insert)
+  :keymaps 'vterm-mode-map
+  "<f13>" 'vterm-send-escape)
+
+(google-this-mode 1)
