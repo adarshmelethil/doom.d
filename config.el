@@ -7,7 +7,7 @@
 
 (setq doom-font (font-spec :family "Mononoki Nerd Font Mono" :size 12))
 
-(setq doom-theme 'doom-gruvbox)
+(setq doom-theme 'doom-outrun-electric)
 
 (setq org-directory "~/org/")
 
@@ -130,3 +130,5 @@
   "<f13>" 'vterm-send-escape)
 
 (google-this-mode 1)
+
+(setq +ivy-buffer-preview t)
