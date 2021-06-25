@@ -17,11 +17,13 @@
          (-filter (lambda (f) (not (string-prefix-p "." f)))
                   (directory-files folder-name))))
 
-(let* ((src-folder (concat (file-name-as-directory my/base-work-dir) "src"))
-       (repo-folders (my/directory-files src-folder))
-       (group-folders (-flatten (--map (my/directory-files it) repo-folders)))
-       )
-  (setq projectile-project-search-path group-folders))
+(use-package! dash
+  :config
+  (let* ((src-folder (concat (file-name-as-directory my/base-work-dir) "src"))
+         (repo-folders (my/directory-files src-folder))
+         (group-folders (-flatten (--map (my/directory-files it) repo-folders)))
+         )
+    (setq projectile-project-search-path group-folders)))
 ;; (--map (directory-files it) ())
 
 (setq display-line-numbers-type 'relative)
