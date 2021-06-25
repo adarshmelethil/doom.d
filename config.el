@@ -5,11 +5,24 @@
 (setq user-full-name "Adarsh Melethil"
       user-mail-address "adarshmelethil@gmail.com")
 
-(setq doom-font (font-spec :family "Mononoki Nerd Font Mono" :size 12))
+(setq doom-font (font-spec :family "Hack Nerd Font" :size 12))
 
 (setq doom-theme 'doom-outrun-electric)
 
 (setq org-directory "~/org/")
+(setq my/base-work-dir "~/work")
+;; (setq projectile-project-search-path '(directory-files "~/work/src"))
+(defun my/directory-files (folder-name)
+  (--map (concat (file-name-as-directory folder-name) it)
+         (-filter (lambda (f) (not (string-prefix-p "." f)))
+                  (directory-files folder-name))))
+
+(let* ((src-folder (concat (file-name-as-directory my/base-work-dir) "src"))
+       (repo-folders (my/directory-files src-folder))
+       (group-folders (-flatten (--map (my/directory-files it) repo-folders)))
+       )
+  (setq projectile-project-search-path group-folders))
+;; (--map (directory-files it) ())
 
 (setq display-line-numbers-type 'relative)
 
@@ -70,7 +83,7 @@
     "<SPC> <down>" (lambda () (interactive) (my-split-window "down")))
 
 (setq show-paren-style 'mixed)
-
+(set-company-backend! 'python-mode '(company-anaconda))
 
 (with-eval-after-load 'org
   (progn
@@ -99,7 +112,6 @@
 (custom-set-faces
   '(org-document-title ((t (:foreground "#fff" :weight bold :height 1.6 :width expanded)))))
 
-(display-time-mode t)
 (after! org
   (map! :map org-mode-map
         :n "M-j" #'org-metadown
@@ -111,7 +123,7 @@
   (save-excursion
     (save-match-data
       (let (inc-by field-width answer)
-        (setq inc-by (if arg arg 1))
+        (setq inc-by (if arg arg 2))
         (skip-chars-backward "0123456789")
         (when (re-search-forward "[0-9]+" nil t)
           (setq field-width (- (match-end 0) (match-beginning 0)))
@@ -121,14 +133,20 @@
           (replace-match (format (concat "%0" (int-to-string field-width) "d")
                                  answer)))))))
 
-(defun vterm-send-escape()
+(defun my/vterm-send-escape ()
   (interactive)
   (vterm-send-key "<escape>"))
+
 (general-define-key
   :states '(insert)
   :keymaps 'vterm-mode-map
-  "<f13>" 'vterm-send-escape)
+  "<f13>" 'my/vterm-send-escape)
 
-(google-this-mode 1)
+(use-package! google-this
+  :config
+  (google-this-mode +1))
+
 
 (setq +ivy-buffer-preview t)
+
+(display-time-mode t)
