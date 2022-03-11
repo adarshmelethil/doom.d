@@ -7,5 +7,29 @@
 ;; (package! builtin-package :disable t)
 
 (package! org-super-agenda)
-(package! clj-refactor)
+;; (package! clj-refactor)
 (package! google-this)
+(package! git-link)
+(package! browse-at-remote)
+;; (package! explain-pause-mode)
+
+;; replacement/enhancement for dired
+(package! dirvish)
+
+;; Python
+(package! pyenv)
+(package! pydoc :recipe
+  (:host github
+   :repo "statmobile/pydoc"
+   :files ("*.el")))
+(package! company-anaconda)
+;; (package! pylookup)
+(package! pymacs)
+
+
+;; (package! focus)
+;; (package! beacon)
+
+;; (package! live-py-mode)
+
+(package! direnv)
