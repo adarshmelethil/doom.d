@@ -16,8 +16,14 @@
 ;; replacement/enhancement for dired
 (package! dirvish)
 
+;; Org
+(package! org-present :recipe
+  (:host github
+   :repo "rlister/org-present"
+   :files ("*.el")))
+
 ;; Python
-(package! pyenv)
+(package! pyvenv)
 (package! pydoc :recipe
   (:host github
    :repo "statmobile/pydoc"

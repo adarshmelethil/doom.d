@@ -1,67 +1,6 @@
 ;;; .doom.d/config.el -*- lexical-binding: t; -*-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                        ;            General Setup            ;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun my-increment-number-decimal (&optional arg)
-  "Increment the number forward from point by 'arg'."
-  (interactive "p*")
-  (save-excursion
-    (save-match-data
-      (let (inc-by field-width answer)
-        (setq inc-by (if arg arg 3))
-        (skip-chars-backward "0123456789")
-        (when (re-search-forward "[0-9]+" nil t)
-          (setq field-width (- (match-end 0) (match-beginning 0)))
-          (setq answer (+ (string-to-number (match-string 0) 10) inc-by))
-          (when (< answer 0)
-            (setq answer (+ (expt 10 field-width) answer)))
-          (replace-match (format (concat "%0" (int-to-string field-width) "d")
-                                 answer)))))))
-(defun my/projectile-pyenv-mode-set ()
-  "Set pyenv version matching project name."
-  (let ((project (projectile-project-name)))
-    (if (member project (pyenv-mode-versions))
-        (pyenv-mode-set project)
-      (pyvenv-mode-unset))))
-(defun my/split-window (pos)
-  (cond
-   ((string= pos "right")
-    (progn
-      (split-window-horizontally)
-      (evil-window-right 1)))
-   ((string= pos "left")
-    (split-window-horizontally))
-   ((string= pos "up")
-    (split-window-vertically))
-   ((string= pos "down")
-    (progn
-      (split-window-vertically)
-      (evil-window-down 1)))))
-(defun my/vterm-send-escape ()
-  (interactive)
-  (vterm-send-key "<escape>"))
-(defun my/remove-local-before-save-hooks ()
-  (interactive)
-  (remove-hook 'before-save-hook #'ws-butler-before-save t)
-  (remove-hook 'before-save-hook #'format-all-buffer--from-hook t))
-(defun my/load-exports-from-script (env-file)
-  (interactive "f")
-  (with-temp-buffer
-    (insert-file-contents env-file)
-    (let* ((lines (split-string (buffer-string) "\n" t "\s*"))
-           (export-lines (mapcar (lambda (elt) (substring elt 7))
-                                 (seq-filter
-                                  (apply-partially #'string-prefix-p "export ")
-                                  lines)))
-           (var-values (mapcar (lambda (elt) (split-string elt "=")) export-lines)))
-      (message "%s" var-values)
-      (cl-loop for (key . value) in var-values do
-               (message "%s -> %s" key (car value))
-               (setenv key (car value))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                         ;            Set Variables            ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -100,7 +39,71 @@
  ;; gotham-theme; doom-outrun-electric
  )
 
+(setenv "WORKON_HOME" (concat (file-name-as-directory my/conda-root) "envs"))
 (add-to-list 'initial-frame-alist '(fullscreen . maximized))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                        ;            General Setup            ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun my-increment-number-decimal (&optional arg)
+  "Increment the number forward from point by 'arg'."
+  (interactive "p*")
+  (save-excursion
+    (save-match-data
+      (let (inc-by field-width answer)
+        (setq inc-by (if arg arg 3))
+        (skip-chars-backward "0123456789")
+        (when (re-search-forward "[0-9]+" nil t)
+          (setq field-width (- (match-end 0) (match-beginning 0)))
+          (setq answer (+ (string-to-number (match-string 0) 10) inc-by))
+          (when (< answer 0)
+            (setq answer (+ (expt 10 field-width) answer)))
+          (replace-match (format (concat "%0" (int-to-string field-width) "d")
+                                 answer)))))))
+(defun my/projectile-pyvenv-workon-set ()
+  "Set pyenv version matching project name."
+  (let ((project (projectile-project-name)))
+    (message "project: %s" project)
+    (if (member project (directory-files (getenv "WORKON_HOME")))
+        (pyvenv-workon project)
+      (progn (message "No env found with name '%s'" project) (pyvenv-deactivate)))))
+(defun my/split-window (pos)
+  (cond
+   ((string= pos "right")
+    (progn
+      (split-window-horizontally)
+      (evil-window-right 1)))
+   ((string= pos "left")
+    (split-window-horizontally))
+   ((string= pos "up")
+    (split-window-vertically))
+   ((string= pos "down")
+    (progn
+      (split-window-vertically)
+      (evil-window-down 1)))))
+(defun my/vterm-send-escape ()
+  (interactive)
+  (vterm-send-key "<escape>"))
+(defun my/remove-local-before-save-hooks ()
+  (interactive)
+  (remove-hook 'before-save-hook #'ws-butler-before-save t)
+  (remove-hook 'before-save-hook #'format-all-buffer--from-hook t))
+(defun my/load-exports-from-script (env-file)
+  (interactive "f")
+  (with-temp-buffer
+    (insert-file-contents env-file)
+    (let* ((lines (split-string (buffer-string) "\n" t "\s*"))
+           (export-lines (mapcar (lambda (elt) (substring elt 7))
+                                 (seq-filter
+                                  (apply-partially #'string-prefix-p "export ")
+                                  lines)))
+           (var-values (mapcar (lambda (elt) (split-string elt "=")) export-lines)))
+      (message "%s" var-values)
+      (cl-loop for (key . value) in var-values do
+               (message "%s -> %s" key (car value))
+               (setenv key (car value))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                                         ;            Python setup           ;
@@ -115,8 +118,9 @@
 (use-package! anaconda-mode
   :hook ((python-mode . anaconda-eldoc-mode)
          (python-mode . anaconda-mode)))
-(use-package! pyenv
-  :after anaconda-mode)
+(use-package! pyvenv
+  :after anaconda-mode
+  :hook (python-mode . pyvenv-mode))
 (use-package! company-anaconda
   :after anaconda-mode company
   :hook (python-mode . anaconda-mode)
@@ -154,13 +158,13 @@
                                         ;           projectile setup          ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package! projectile
-  :after pyenv
-  :custom
-  (projectile-project-search-path '(my/src-dir . 2))
+  :after pyvenv
   :init
+  (setq projectile-project-search-path `((,my/src-dir . 3))
+        projectile-auto-discover t)
   (add-hook
    'projectile-after-switch-project-hook
-   'projectile-pyvenv-mode-set))
+   #'my/projectile-pyvenv-workon-set))
 
 (use-package! dash)
 (use-package! undo-fu)
