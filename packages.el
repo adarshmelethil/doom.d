@@ -39,3 +39,33 @@
 ;; (package! live-py-mode)
 
 (package! direnv)
+
+;; (package! tree-sitter)
+;; (package! tree-sitter-langs)
+
+(package! company-posframe)
+(package! mixed-pitch)
+(package! org-appear)
+
+(package! websocket)
+(package! simple-httpd)
+(package! f)
+
+(unpin! org-roam)
+(package! org-roam-ui)
+(package! org-transclusion)
+(package! org-contrib)
+(package! org-fancy-priorities)
+(package! elpy)
+(package! deferred)
+(package! epc)
+(package! ctable)
+
+(package! buffer-env)
+(package! deft)
+
+
+(package! paradox)
+;; (package! fira-code-mode)
+
+(package! elm-mode)

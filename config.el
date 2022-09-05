@@ -3,6 +3,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                         ;            Set Variables            ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; (set-fontset-font t 'unicode (font-spec :family "Material Icons") nil 'append)
 
 (setq
  ;; META
@@ -31,7 +32,11 @@
  ;; List all fonts and insert into current buffer
  ;; (dolist (font (font-family-list))
  ;;   (insert (format "%s\n" font)))
- doom-font (font-spec :family "Input Serif" :size 12)
+ ;; doom-font (font-spec :family "Iosevka Custom" :size 14)
+ ;; doom-font (font-spec :family "FiraMono Nerd Font" :size 14)
+ ;; doom-font (font-spec :family "Material Icons Regular" :size 14)
+ ;; material-design-icons
+ 
  ;; American Typewriter; Give You Glory; Bodoni 72 Oldstyle
 
  ;; Themes
@@ -40,7 +45,7 @@
  )
 
 (setenv "WORKON_HOME" (concat (file-name-as-directory my/conda-root) "envs"))
-(add-to-list 'initial-frame-alist '(fullscreen . maximized))
+;; (add-to-list 'initial-frame-alist '(fullscreen . maximized))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -67,8 +72,16 @@
   (let ((project (projectile-project-name)))
     (message "project: %s" project)
     (if (member project (directory-files (getenv "WORKON_HOME")))
-        (pyvenv-workon project)
-      (progn (message "No env found with name '%s'" project) (pyvenv-deactivate)))))
+        (progn
+          (message "Using conda env '%s'" project)
+          (pyvenv-workon project)
+          ;; (conda-env-activate project)
+          )
+      (progn
+        (message "No env found with name '%s'" project)
+        ;; (pyvenv-deactivate)
+        ;; (conda-env-deactivate)
+        ))))
 (defun my/split-window (pos)
   (cond
    ((string= pos "right")
@@ -109,23 +122,33 @@
                                         ;            Python setup           ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(use-package! conda
-  :init
-  (setenv "ANACONDA_HOME" my/conda-root)
-  :custom
-  (conda-anaconda-home my/conda-root)
-  (conda-system-gud-pdb-command-name "python -m ipdb"))
+;; (use-package! conda
+;;   :init
+;;   (setenv "ANACONDA_HOME" my/conda-root)
+;;   :custom
+;;   (conda-anaconda-home my/conda-root)
+;;   ;; (conda-system-gud-pdb-command-name "python -m ipdb")
+;;   )
+(setq python-shell-interpreter "ipython"
+  python-shell-interpreter-interactive-args "-i --simple-prompt"
+  )
+
 (use-package! anaconda-mode
-  :hook ((python-mode . anaconda-eldoc-mode)
+  :hook (;;(python-mode . anaconda-eldoc-mode)
          (python-mode . anaconda-mode)))
 (use-package! pyvenv
-  :after anaconda-mode
+  ;; :after anaconda-mode
   :hook (python-mode . pyvenv-mode))
 (use-package! company-anaconda
-  :after anaconda-mode company
+  ;; :after anaconda-mode company
   :hook (python-mode . anaconda-mode)
   :config
   (set-company-backend! 'python-mode '(company-anaconda)))
+
+;; (use-package! tree-sitter
+;;   :config
+;;   (global-tree-sitter-mode))
+
 ;; (use-package! pymacs
 ;;   :config
 ;;   (pymacs-load "ropemacs" "rope")
@@ -133,21 +156,27 @@
 ;;   (setq ropemacs-local-prefix "C-c C-p"))
 
 
-(defun load-ropemacs ()
-  "Load pymacs and ropemacs"
-  (interactive)
-  (pymacs-load "ropemacs" "rope-")
-  ;; Automatically save project python buffers before refactorings
-  (setq ropemacs-confirm-saving 'nil))
-(use-package! python-mode
-  :general
-  (:states 'normal
-   :keymaps 'python-mode-map
-   "<SPC> p *" #'load-ropemacs)
-  :custom
-  python-shell-completion-native-enable nil
-  python-indent-offset 2
-  python-shell-interpreter "ipython")
+;; (defun load-ropemacs ()
+;;   "Load pymacs and ropemacs"
+;;   (interactive)
+;;   (pymacs-load "ropemacs" "rope-")
+;;   ;; Automatically save project python buffers before refactorings
+;;   (setq ropemacs-confirm-saving 'nil))
+
+(after! python-mode
+  :config
+  (push "ipython" python-shell-completion-native-enable))
+;; (use-package! python-mode
+;;   :general
+;;   (:states 'normal
+;;    :keymaps 'python-mode-map
+;;    "<SPC> p *" #'load-ropemacs)
+;;   ;; :custom
+;;   ;; python-indent-offset 2
+;;   ;; python-shell-interpreter "python"
+;;   ;; python-shell-completion-native-enable nil
+;;   ;; python-shell-interpreter-interactive-arg
+;;   )
 
 ;; (setq-hook! python-mode
 ;;   )
@@ -182,6 +211,108 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                                         ;            Org Mode Setup           ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(after! org
+  (setq
+   org-directory my/org-dir
+   org-todo-keywords '((sequence
+                        "TODO(t)"
+                        "ON-GOING(p)"
+                        "STARTED(s)"
+                        "BLOCKED(w)"
+                        "|"
+                        "DONE(d)"
+                        "KILL(k)"))
+   org-todo-keyword-faces '(("[-]"  . +org-todo-active)
+                            ("STARTED" . +org-todo-active)
+                            ("[?]"  . +org-todo-onhold)
+                            ("BLOCKED" . +org-todo-onhold)
+                            ("ON-GOING" . +org-todo-active))
+   org-log-done 'time
+   org-use-property-inheritance t
+   org-startup-indented t
+   org-pretty-entities t
+   org-hide-emphasis-markers t
+   org-startup-with-inline-images t
+   org-image-actual-width '(300)))
+
+(use-package! org-present
+  :after org
+  :config
+  (add-hook 'org-present-mode-hook
+            (lambda ()
+              (org-present-big)
+              (org-display-inline-images)
+              (org-present-hide-cursor)
+              (org-present-read-only)))
+  (add-hook 'org-present-mode-quit-hook
+            (lambda ()
+              (org-present-small)
+              (org-remove-inline-images)
+              (org-present-show-cursor)
+              (org-present-read-write))))
+
+(use-package! simple-httpd)
+(use-package! f)
+(use-package! deft
+  :config
+  (setq deft-directory my/org-dir
+        deft-recursive t))
+(use-package! org-roam
+  :config
+  (setq org-roam-directory (concat my/org-dir "/roam")))
+
+(use-package! org-transclusion
+              :after org
+              :init
+              ;; #'org-transclusion-mode
+              (map!
+               :leader
+               :n "i" #'org-transclusion-add
+               ;; :desc "Org Transclusion Mode"
+               ))
+
+(use-package! websocket
+  :after org-roam)
+
+(use-package! org-roam-ui
+    :after org-roam ;; or :after org
+;;         normally we'd recommend hooking orui after org-roam, but since org-roam does not have
+;;         a hookable mode anymore, you're advised to pick something yourself
+;;         if you don't care about startup time, use
+ ;; :hook (after-init . org-roam-ui-mode)
+ :config
+ (setq org-roam-ui-sync-theme t
+       org-roam-ui-follow t
+       org-roam-ui-update-on-save t
+       org-roam-ui-open-on-start t))
+(use-package! org-fancy-priorities
+  :hook
+  (org-mode . org-fancy-priorities-mode)
+  :config
+  (setq org-fancy-priorities-list '("⚡" "⬆" "⬇" "☕")))
+(use-package! org-contrib)
+
+ ;; Nice bullets
+(use-package! org-appear
+  :hook (org-mode . org-appear-mode)
+  :config
+  (setq org-appear-trigger 'manual)
+  (add-hook 'evil-insert-state-entry-hook #'org-appear-manual-start nil t)
+  (add-hook 'evil-insert-state-exit-hook #'org-appear-manual-stop nil t))
+
+
+(use-package! mixed-pitch
+    :hook
+    (text-mode . mixed-pitch-mode)
+    :config
+        (set-face-attribute 'default nil :font "DejaVu Sans Mono" :height 130)
+    (set-face-attribute 'fixed-pitch nil :font "DejaVu Sans Mono")
+    (set-face-attribute 'variable-pitch nil :font "DejaVu Sans"))
+
+ (use-package! company-posframe
+    :config
+    (company-posframe-mode 1))
 
 (use-package! org-super-agenda
   :after org-agenda
@@ -237,43 +368,6 @@
   :i "<f13>" 'my/vterm-send-escape)
  )
 
-(after! org
-  (setq
-   org-todo-keywords
-   '((sequence
-      "TODO(t)"
-      "ON-GOING(p)"
-      "STARTED(s)"
-      "BLOCKED(w)"
-      "|"
-      "DONE(d)"
-      "KILL(k)"))
-   org-todo-keyword-faces
-   '(("[-]"  . +org-todo-active)
-     ("STARTED" . +org-todo-active)
-     ("[?]"  . +org-todo-onhold)
-     ("BLOCKED" . +org-todo-onhold)
-     ("ON-GOING" . +org-todo-active))
-   org-log-done 'time
-   org-use-property-inheritance t))
-
-(use-package! org-present
-  :after org
-  :config
-  (add-hook 'org-present-mode-hook
-            (lambda ()
-              (org-present-big)
-              (org-display-inline-images)
-              (org-present-hide-cursor)
-              (org-present-read-only)))
-  (add-hook 'org-present-mode-quit-hook
-            (lambda ()
-              (org-present-small)
-              (org-remove-inline-images)
-              (org-present-show-cursor)
-              (org-present-read-write))))
-
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -283,9 +377,9 @@
 (use-package! google-this
   :config
   (google-this-mode +1))
-(use-package! ivy
-  :custom
-  +ivy-buffer-preview t)
+;; (use-package! ivy
+;;   :custom
+;;   +ivy-buffer-preview t)
 
 (use-package! dirvish)
 ;; (use-package! focus)
@@ -293,3 +387,78 @@
 ;;   :init (beacon-mode 1))
 
 (use-package! direnv)
+
+
+;; (org-preview-html
+;;  html2org
+;;  walkman
+;;  direnv
+;;  org-contrib
+;;  org-plus-contrib
+;;  org-parser
+;;  pass
+;;  ob-diagrams
+;;  ob-sql-mode
+;;  ob-html-chrome
+;;  ob-mermaid
+;;  ob-ipython
+;;  ob-browser
+;;  ob-rust
+;;  ob-http
+;;  ob-hy
+;;  ob-clojurescript
+;;  ascii-art-to-unicode
+;;  list-unicode-display
+;;  emoji-fontset
+;;  unicode-emoticons
+;;  unicode-fonts
+;;  nix-mode
+;;  hy-mode
+;;  org-present)
+
+(customize-set-variable
+ 'tramp-password-prompt-regexp
+  (concat
+   "^.*"
+   (regexp-opt
+    '("[Vv]erification\s*[Cc]ode"
+      "password" "Password"
+      "phrase" "code" "ord" "phrase" "wor[dt]"
+      )
+    t)
+   ".*:\0? *"))
+
+(customize-set-variable
+             'tramp-syntax 'simplified)
+
+(setq org-plantuml-jar-path (expand-file-name "~/work/scripts/plantuml.jar")
+      org-babel-napkin-plantuml-server-url "http://localhost:8080")
+
+;; (use-package! elpy
+;;   :disable t
+;;   :ensure t
+;;   :init
+;;   (elpy-enable))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                                        ;             Custom Code             ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; foo
+
+(use-package! parinfer-rust-mode
+    :hook emacs-lisp-mode
+    :init
+    (setq parinfer-rust-auto-download t))
+
+(after! gcmh
+  (setq gcmh-high-cons-threshold 33554432))
+(use-package! deferred)
+(use-package! epc)
+(use-package! ctable)
+(use-package! f)
+
+(load-file "~/.doom.d/gateway-core.el")
+
+;; (use-package! fira-code-mode
+;;   :hook prog-mode)
+
+(use-package! elm-mode)

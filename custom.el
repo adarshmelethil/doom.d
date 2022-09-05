@@ -5,6 +5,8 @@
  ;; If there is more than one, they won't work right.
  '(ansi-color-names-vector
    ["#242424" "#e5786d" "#95e454" "#cae682" "#8ac6f2" "#333366" "#ccaa8f" "#f6f3e8"])
+ '(buffer-env-safe-files
+   '(("/Users/adarsh.melethil/.doom.d/gateway-pkg/buffer-env-script-name" . "2f93f9b1d4ea976d383674ad2d5454e4acf3bcebbde2ac51f0110ce2e4ea2a37")))
  '(custom-safe-themes
    '("c4063322b5011829f7fdd7509979b5823e8eea2abf1fe5572ec4b7af1dd78519" "5283a0c77cc7640fc28493cfdf8957b11e1c72af846d96f5e5a6a37432264c34" "f6665ce2f7f56c5ed5d91ed5e7f6acb66ce44d0ef4acfaa3a42c7cfe9e9a9013" default))
  '(exwm-floating-border-color "#191b20")
@@ -19,11 +21,42 @@
  '(jdee-db-spec-breakpoint-face-colors (cons "#1B2229" "#3f444a"))
  '(objed-cursor-color "#ff6c6b")
  '(package-selected-packages
-   '(org-preview-html html2org walkman direnv org-contrib org-plus-contrib org-parser pass ob-diagrams ob-sql-mode ob-html-chrome ob-mermaid ob-ipython ob-browser ob-rust ob-http ob-hy ob-clojurescript ascii-art-to-unicode list-unicode-display emoji-fontset unicode-emoticons unicode-fonts nix-mode hy-mode org-present))
+   '(yaml-mode hcl-mode org-preview-html html2org walkman direnv org-contrib org-plus-contrib org-parser pass ob-diagrams ob-sql-mode ob-html-chrome ob-mermaid ob-ipython ob-browser ob-rust ob-http ob-hy ob-clojurescript ascii-art-to-unicode list-unicode-display emoji-fontset unicode-emoticons unicode-fonts nix-mode hy-mode org-present))
  '(pdf-view-midnight-colors (cons "#bbc2cf" "#282c34"))
  '(rustic-ansi-faces
    ["#282c34" "#ff6c6b" "#98be65" "#ECBE7B" "#51afef" "#c678dd" "#46D9FF" "#bbc2cf"])
- '(safe-local-variable-values '((eval pyvenv-workon "cards")))
+ '(safe-local-variable-values
+   '((pyvenv-workon . "gateway-profile")
+     (sql-postgres-login-params
+      '((user :default "postgres")
+        (passowrd "postgres")
+        (database :default "postgres")
+        (server :default "localhost")
+        (port :default 5432)))
+     (sql-postgres-login-params
+      '((user :default "postgres")
+        (database :default "postgres")
+        (server :default "localhost")
+        (port :default 5432)))
+     (pyvenv-workon . "cards-gateway")
+     (eval message "this")
+     (eval do
+           (call-interactively #'pyvenv-workon)
+           (call-interactively #'my/execute-setup-block))
+     (eval call-interactively #'my/execute-setup-block)
+     (eval pyvenv-workon)
+     (eval my/execute-startup-block)
+     (eval call-interactively #'pyvenv-workon)
+     (eval setq org-roam-directory
+           (concat my/src-dir "/github.com/adarsh-emburse/cards-gateway/org-roam"))
+     (eval setq org-roam-directory
+           (concat my/src-dir "github.com/adarsh-emburse/cards-gateway/org-roam"))
+     (eval message "Org-roam directory set to `%s'." org-roam-directory)
+     (eval setq org-roam-directory
+           (concat
+            (file-name-directory my/src-dir)
+            "github.com/adarsh-emburse/cards-gateway/org-roam"))
+     (eval pyvenv-workon "cards")))
  '(vc-annotate-background "#282c34")
  '(vc-annotate-color-map
    (list
