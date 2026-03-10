@@ -1,7 +1,5 @@
 ;;; gateway-core.el -*- lexical-binding: t; -*-
 (require 'f)
-(require 'cl-lib)
-(require 'ctable)
 
 (defgroup gateway nil
   "Gateway related helpers."
@@ -91,42 +89,40 @@
   (gateway-call #'no-op create_models "connection"))
 
 
-(map! :leader
-      (:prefix "a"
+(map!
+ :leader
+ (:prefix "a"
+  (:prefix "e"  ;; Environment
+   "a" (lambda () (interactive) (pyvenv-workon "cards-gateway")))
 
-       (:prefix "e"  ;; Environment
-        "a" (lambda () (interactive) (pyvenv-workon "cards-gateway")))
+  (:prefix "b"  ;; Buffer
+   "b" (lambda () (interactive) (gateway-buffer t)))
 
-       (:prefix "b"  ;; Buffer
-        "b" (lambda () (interactive) (gateway-buffer t)))
+  (:prefix "s"  ;; Server
+   "s" #'gateway-start-epc
+   "k" #'gateway-kill-epc
+   "r" #'gateway-restart-epc)
 
-       (:prefix "s"  ;; Server
-        "s" #'gateway-start-epc
-        "k" #'gateway-kill-epc
-        "r" #'gateway-restart-epc)
+  (:prefix "m"  ;; Model
+   "c" #'gateway-create-model)
 
-       (:prefix "m"  ;; Model
-        "c" #'gateway-create-model)
-
-       (:prefix "t"  ;; Test
-        "e" #'gateway-call-echo
-        "d" #'gateway-call-data
-        "h" (lambda () (interactive) (message "Gateway HelloWorld")))))
-
-;; (eval-js-file "/Users/adarsh.melethil/.doom.d/gateway-pkg/out/js/main.js")
-
-;; (eval-js "import 'https://deno.land/x/fuzzy_search@0.3.0/mod-fuzzy.js'")
-;; (eval-js "lisp.print('hello')")
-
-;; (ctbl:popup-table-buffer-easy
-;;  '((1 2 3 4) (5 6 7 8) (9 10 11 12)))
+  (:prefix "t"  ;; Test
+   "e" #'gateway-call-echo
+   "d" #'gateway-call-data
+   "h" (lambda () (interactive) (message "Gateway HelloWorld")))))
 
 
-;; (deferred:$
-;;   (deferred:wait 10000) ; 1000msec
-;;   (deferred:nextc it
-;;     (lambda (x)
-;;       (message "Timer sample! : %s msec" x))))
+;; (save-excursion
+;;   (ctbl:popup-table-buffer-easy
+;;    '((1 2 3 4) (5 6 7 8) (9 10 11 12)) '("A" "B" "C" "D"))
+;;   )
+
+;; with-current-buffer
+;; ;; (deferred:$
+;; ;;   (deferred:wait 10000) ; 1000msec
+;; ;;   (deferred:nextc it
+;; ;;     (lambda (x)
+;; ;;       (message "Timer sample! : %s msec" x))))
 
 
 (defun company-simple-backend (command &optional arg &rest ignored)

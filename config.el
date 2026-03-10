@@ -1,9 +1,11 @@
 ;;; .doom.d/config.el -*- lexical-binding: t; -*-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                        ;            Set Variables            ;
+                                        ;            Set Variables            ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; (set-fontset-font t 'unicode (font-spec :family "Material Icons") nil 'append)
+;;
+;;
 
 (setq
  ;; META
@@ -16,6 +18,7 @@
  my/scripts-dir (concat (file-name-as-directory my/work-dir) "scripts")
  my/bin-dir (concat (file-name-as-directory my/work-dir) "bin")
  my/conda-root (concat (file-name-as-directory (getenv "HOME")) "miniforge3")
+ projectile-project-search-path `(,my/src-dir)
 
  ;; Line numbers
  global-display-line-numbers-mode 'visual
@@ -23,34 +26,75 @@
  display-line-numbers 'visual
  column-number-mode t
  display-line-numbers-major-tick 0
+ display-line-numbers-grow-only t
 
  ;; Parens
  show-paren-style 'mixed
 
  ;; Fonts
- ;; *func
- ;; List all fonts and insert into current buffer
- ;; (dolist (font (font-family-list))
- ;;   (insert (format "%s\n" font)))
- ;; doom-font (font-spec :family "Iosevka Custom" :size 14)
- ;; doom-font (font-spec :family "FiraMono Nerd Font" :size 14)
- ;; doom-font (font-spec :family "Material Icons Regular" :size 14)
- ;; material-design-icons
- 
- ;; American Typewriter; Give You Glory; Bodoni 72 Oldstyle
-
+ ;; -*-ProggyCleanTT Nerd Font Mono-normal-normal-normal-*-*-*-*-*-m-0-iso10646-1
+ ;; ProggyCleanTT Nerd Font Mono Book
+ ;; ProggyCleanTT Nerd Font Mono-normal-normal-normal
+ ;; doom-font (font-spec :family "ProggyCleanTT Nerd Font Mono" :size 24 :weight 'light)
+ ;; doom-font (font-spec :family "Atkinson Hyperlegible" :size 16)
+ ;; doom-font (font-spec :family "3270Medium Nerd Font Mono" :size 12)
+ ;; doom-theme 'doom-palenight
  ;; Themes
  doom-theme 'doom-gruvbox
  ;; gotham-theme; doom-outrun-electric
- )
+
+
+ org-babel-napkin-plantuml-server-url "http://localhost:8080")
 
 (setenv "WORKON_HOME" (concat (file-name-as-directory my/conda-root) "envs"))
-;; (add-to-list 'initial-frame-alist '(fullscreen . maximized))
 
+;; (add-to-list 'org-src-lang-modes '("plantuml" . plantuml))
+(org-babel-do-load-languages 'org-babel-load-languages '((plantuml . t)))
+(setq plantuml-default-exec-mode 'jar
+      org-plantuml-jar-path (expand-file-name "~/work/scripts/plantuml-1.2025.4.jar")
+      plantuml-jar-path org-plantuml-jar-path)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                        ;            General Setup            ;
+                                        ;            Functions                ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; (list-directory my/src-dir)
+;; (insert-directory my/src-dir "-l")
+(require 'seq)
+(require 'dash)
+;; (file-directory-p my/src-dir)
+
+(defun complement (f)
+  (lambda (&rest args)
+    (not (apply f args))))
+
+(cl-iter-defun git-projects-under-directory (dir)
+  (dolist (sub-dir (seq-filter (complement #'directory-empty-p) (seq-filter #'file-accessible-directory-p (directory-files dir t "^[^.]"))))
+    (if (file-exists-p (concat (file-name-as-directory sub-dir) ".git"))
+        (iter-yield (file-name-as-directory (abbreviate-file-name sub-dir)))
+      (iter-yield-from (git-projects-under-directory sub-dir)))))
+
+(cl-iter-defun iter-filter (func iter)
+  (iter-do (val iter)
+    (when (apply func (list val))
+      (iter-yield val))))
+
+(cl-iter-defun new-projects (&optional root-project-dir)
+  (iter-yield-from (iter-filter
+                    (complement (-rpartial #'member projectile-known-projects))
+                    (git-projects-under-directory (or root-project-dir my/src-dir)))))
+
+(defun add-all-new-projects (project-root)
+  (interactive (list (read-directory-name "Add to known projects: " "~/" my/src-dir)))
+  (iter-do (p (new-projects))
+    (message "Adding project: %s" p)
+    (projectile-add-known-project p)
+    ))
+
+;; (add-all-new-projects my/src-dir)
+
+(string-match-p directory-files-no-dot-files-regexp "/Users/adarsh.melethil/work/src/..")
+(seq-first (directory-files-recursively my/src-dir directory-files-no-dot-files-regexp))
+(seq-filter 'file-directory-p (directory-files my/src-dir t directory-files-no-dot-files-regexp))
 
 (defun my-increment-number-decimal (&optional arg)
   "Increment the number forward from point by 'arg'."
@@ -117,240 +161,62 @@
       (cl-loop for (key . value) in var-values do
                (message "%s -> %s" key (car value))
                (setenv key (car value))))))
+(defun my/search-action (x)
+  "Search for X."
+  (if (doom-region-active-p)
+      (progn
+        (delete-region (doom-region-beginning) (doom-region-end))
+        (insert x))
+    (insert x)))
+(defun my/spell-check (query)
+  (interactive
+   (list (if (use-region-p) (doom-thing-at-point-or-region))))
+  (require 'request)
+  (require 'json)
+  (message "-%s-" (doom-region-active-p))
+  (let ((ivy-initial-inputs-alist `((t . ,query)))
+        (counsel-search-engine 'google))
+    (ivy-read "search: " #'counsel-search-function
+              :action #'my/search-action
+              :dynamic-collection t
+              :caller 'my/spell-check)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                                        ;            Python setup           ;
+                                        ;            Python setup             ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; (use-package! conda
-;;   :init
-;;   (setenv "ANACONDA_HOME" my/conda-root)
-;;   :custom
-;;   (conda-anaconda-home my/conda-root)
-;;   ;; (conda-system-gud-pdb-command-name "python -m ipdb")
-;;   )
-(setq python-shell-interpreter "ipython"
-  python-shell-interpreter-interactive-args "-i --simple-prompt"
-  )
-
-(use-package! anaconda-mode
-  :hook (;;(python-mode . anaconda-eldoc-mode)
-         (python-mode . anaconda-mode)))
-(use-package! pyvenv
-  ;; :after anaconda-mode
-  :hook (python-mode . pyvenv-mode))
-(use-package! company-anaconda
-  ;; :after anaconda-mode company
-  :hook (python-mode . anaconda-mode)
-  :config
-  (set-company-backend! 'python-mode '(company-anaconda)))
-
-;; (use-package! tree-sitter
-;;   :config
-;;   (global-tree-sitter-mode))
-
-;; (use-package! pymacs
-;;   :config
-;;   (pymacs-load "ropemacs" "rope")
-;;   (setq ropemacs-enable-shortcuts nil)
-;;   (setq ropemacs-local-prefix "C-c C-p"))
-
-
-;; (defun load-ropemacs ()
-;;   "Load pymacs and ropemacs"
-;;   (interactive)
-;;   (pymacs-load "ropemacs" "rope-")
-;;   ;; Automatically save project python buffers before refactorings
-;;   (setq ropemacs-confirm-saving 'nil))
-
-(after! python-mode
-  :config
-  (push "ipython" python-shell-completion-native-enable))
-;; (use-package! python-mode
-;;   :general
-;;   (:states 'normal
-;;    :keymaps 'python-mode-map
-;;    "<SPC> p *" #'load-ropemacs)
-;;   ;; :custom
-;;   ;; python-indent-offset 2
-;;   ;; python-shell-interpreter "python"
-;;   ;; python-shell-completion-native-enable nil
-;;   ;; python-shell-interpreter-interactive-arg
-;;   )
-
-;; (setq-hook! python-mode
-;;   )
-;; (use-package! pylookup)
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                                         ;           projectile setup          ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(use-package! projectile
-  :after pyvenv
-  :init
-  (setq projectile-project-search-path `((,my/src-dir . 3))
-        projectile-auto-discover t)
-  (add-hook
-   'projectile-after-switch-project-hook
-   #'my/projectile-pyvenv-workon-set))
-
-(use-package! dash)
-(use-package! undo-fu)
-
-(use-package! explain-pause-mode
-  :config
-  (explain-pause-mode))
-
-(use-package! evil
-  :after undo-fu
-  :init
-  (setq evil-undo-system 'undo-fu))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                                         ;            Org Mode Setup           ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(after! org
-  (setq
-   org-directory my/org-dir
-   org-todo-keywords '((sequence
-                        "TODO(t)"
-                        "ON-GOING(p)"
-                        "STARTED(s)"
-                        "BLOCKED(w)"
-                        "|"
-                        "DONE(d)"
-                        "KILL(k)"))
-   org-todo-keyword-faces '(("[-]"  . +org-todo-active)
-                            ("STARTED" . +org-todo-active)
-                            ("[?]"  . +org-todo-onhold)
-                            ("BLOCKED" . +org-todo-onhold)
-                            ("ON-GOING" . +org-todo-active))
-   org-log-done 'time
-   org-use-property-inheritance t
-   org-startup-indented t
-   org-pretty-entities t
-   org-hide-emphasis-markers t
-   org-startup-with-inline-images t
-   org-image-actual-width '(300)))
-
-(use-package! org-present
-  :after org
-  :config
-  (add-hook 'org-present-mode-hook
-            (lambda ()
-              (org-present-big)
-              (org-display-inline-images)
-              (org-present-hide-cursor)
-              (org-present-read-only)))
-  (add-hook 'org-present-mode-quit-hook
-            (lambda ()
-              (org-present-small)
-              (org-remove-inline-images)
-              (org-present-show-cursor)
-              (org-present-read-write))))
-
-(use-package! simple-httpd)
-(use-package! f)
-(use-package! deft
-  :config
-  (setq deft-directory my/org-dir
-        deft-recursive t))
-(use-package! org-roam
-  :config
-  (setq org-roam-directory (concat my/org-dir "/roam")))
-
-(use-package! org-transclusion
-              :after org
-              :init
-              ;; #'org-transclusion-mode
-              (map!
-               :leader
-               :n "i" #'org-transclusion-add
-               ;; :desc "Org Transclusion Mode"
-               ))
-
-(use-package! websocket
-  :after org-roam)
-
-(use-package! org-roam-ui
-    :after org-roam ;; or :after org
-;;         normally we'd recommend hooking orui after org-roam, but since org-roam does not have
-;;         a hookable mode anymore, you're advised to pick something yourself
-;;         if you don't care about startup time, use
- ;; :hook (after-init . org-roam-ui-mode)
- :config
- (setq org-roam-ui-sync-theme t
-       org-roam-ui-follow t
-       org-roam-ui-update-on-save t
-       org-roam-ui-open-on-start t))
-(use-package! org-fancy-priorities
-  :hook
-  (org-mode . org-fancy-priorities-mode)
-  :config
-  (setq org-fancy-priorities-list '("⚡" "⬆" "⬇" "☕")))
-(use-package! org-contrib)
-
- ;; Nice bullets
-(use-package! org-appear
-  :hook (org-mode . org-appear-mode)
-  :config
-  (setq org-appear-trigger 'manual)
-  (add-hook 'evil-insert-state-entry-hook #'org-appear-manual-start nil t)
-  (add-hook 'evil-insert-state-exit-hook #'org-appear-manual-stop nil t))
-
-
-(use-package! mixed-pitch
-    :hook
-    (text-mode . mixed-pitch-mode)
-    :config
-        (set-face-attribute 'default nil :font "DejaVu Sans Mono" :height 130)
-    (set-face-attribute 'fixed-pitch nil :font "DejaVu Sans Mono")
-    (set-face-attribute 'variable-pitch nil :font "DejaVu Sans"))
-
- (use-package! company-posframe
-    :config
-    (company-posframe-mode 1))
-
-(use-package! org-super-agenda
-  :after org-agenda
-  :custom
-  org-super-agenda-mode '((:name "Today"
-                           :time-grid t
-                           :scheduled today)
-                          (:name "Due today"
-                           :deadline today)
-                          (:name "Important"
-                           :priority "A")
-                          (:name "Overdue"
-                           :deadline past)
-                          (:name "Due soon"
-                           :deadline future)
-                          (:name "Big Outcomes"
-                           :tag "bo"))
-  :config
-  (org-super-agenda-mode))
+(setq sqlformat-command 'pgformatter)
+(setq sqlformat-args '("-s2" "-g"))
+;; (require 'sqlformat)  ; manual install
 
 (map!
  ;; split navigation
-  :n "<down>" 'evil-window-down
-  :n "<left>" 'evil-window-left
-  :n "<up>" 'evil-window-up
-  :n "<right>" 'evil-window-right
+ :n "<down>" 'evil-window-down
+ :n "<left>" 'evil-window-left
+ :n "<up>" 'evil-window-up
+ :n "<right>" 'evil-window-right
 
-  ;; split resizing
-  :n "+" 'evil-window-increase-width
-  :n "_" 'evil-window-decrease-width
-  :n "M-=" 'evil-window-increase-height
-  :n "M--" 'evil-window-decrease-height
+ ;; split resizing
+ :n "+" 'evil-window-increase-width
+ :n "_" 'evil-window-decrease-width
+ :n "M-=" 'evil-window-increase-height
+ :n "M--" 'evil-window-decrease-height
  ;; split creation
  (:leader
   :n "<right>" (lambda () (interactive) (my/split-window "right"))
   :n "<up>" (lambda () (interactive) (my/split-window "up"))
   :n "<left>" (lambda () (interactive) (my/split-window "left"))
   :n "<down>" (lambda () (interactive) (my/split-window "down"))
+  :nv "s c" #'my/spell-check
+  :nv "F s" #'sqlformat-region
+
+  :n "p A" #'add-all-new-projects
 
   ;; git-link
   :n "Y g" #'git-link-homepage
@@ -368,97 +234,230 @@
   :i "<f13>" 'my/vterm-send-escape)
  )
 
-
+;; (use-package! sqlformat)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                ;              Miscellaneous             ;
+                                        ;              Miscellaneous             ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(use-package! google-this
-  :config
-  (google-this-mode +1))
-;; (use-package! ivy
-;;   :custom
-;;   +ivy-buffer-preview t)
-
-(use-package! dirvish)
-;; (use-package! focus)
-;; (use-package! beacon
-;;   :init (beacon-mode 1))
-
-(use-package! direnv)
-
-
-;; (org-preview-html
-;;  html2org
-;;  walkman
-;;  direnv
-;;  org-contrib
-;;  org-plus-contrib
-;;  org-parser
-;;  pass
-;;  ob-diagrams
-;;  ob-sql-mode
-;;  ob-html-chrome
-;;  ob-mermaid
-;;  ob-ipython
-;;  ob-browser
-;;  ob-rust
-;;  ob-http
-;;  ob-hy
-;;  ob-clojurescript
-;;  ascii-art-to-unicode
-;;  list-unicode-display
-;;  emoji-fontset
-;;  unicode-emoticons
-;;  unicode-fonts
-;;  nix-mode
-;;  hy-mode
-;;  org-present)
-
-(customize-set-variable
- 'tramp-password-prompt-regexp
-  (concat
-   "^.*"
-   (regexp-opt
-    '("[Vv]erification\s*[Cc]ode"
-      "password" "Password"
-      "phrase" "code" "ord" "phrase" "wor[dt]"
-      )
-    t)
-   ".*:\0? *"))
-
-(customize-set-variable
-             'tramp-syntax 'simplified)
-
-(setq org-plantuml-jar-path (expand-file-name "~/work/scripts/plantuml.jar")
-      org-babel-napkin-plantuml-server-url "http://localhost:8080")
-
-;; (use-package! elpy
-;;   :disable t
-;;   :ensure t
-;;   :init
-;;   (elpy-enable))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                                         ;             Custom Code             ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; foo
-
-(use-package! parinfer-rust-mode
-    :hook emacs-lisp-mode
-    :init
-    (setq parinfer-rust-auto-download t))
-
-(after! gcmh
-  (setq gcmh-high-cons-threshold 33554432))
-(use-package! deferred)
-(use-package! epc)
-(use-package! ctable)
-(use-package! f)
 
 (load-file "~/.doom.d/gateway-core.el")
 
-;; (use-package! fira-code-mode
-;;   :hook prog-mode)
 
-(use-package! elm-mode)
+(defun efs/presentation-setup ()
+  (message "efs/presentation-setup")
+  ;; Hide the mode line
+  (hide-mode-line-mode 1)
+
+  ;; Display images inline
+  (org-display-inline-images) ;; Can also use org-startup-with-inline-images
+
+  ;; Scale the text.  The next line is for basic scaling:
+  (setq text-scale-mode-amount 3)
+  (text-scale-mode 1))
+
+;; This option is more advanced, allows you to scale other faces too
+;; (setq-local face-remapping-alist '((default (:height 2.0) variable-pitch)
+;;                                    (org-verbatim (:height 1.75) org-verbatim)
+;;                                    (org-block (:height 1.25) org-block))))
+
+(defun efs/presentation-end ()
+  ;; Show the mode line again
+  (hide-mode-line-mode 0)
+
+  ;; Turn off text scale mode (or use the next line if you didn't use text-scale-mode)
+  ;; (text-scale-mode 0))
+
+  ;; If you use face-remapping-alist, this clears the scaling:
+  (setq-local face-remapping-alist '((default variable-pitch default))))
+
+(use-package! org-tree-slide
+  :hook ((org-tree-slide-play . efs/presentation-setup)
+         (org-tree-slide-stop . efs/presentation-end))
+  :custom
+  (org-tree-slide-slide-in-effect t)
+  (org-tree-slide-activate-message "Presentation started!")
+  (org-tree-slide-deactivate-message "Presentation finished!")
+  (org-tree-slide-header t)
+  (org-tree-slide-breadcrumbs " > ")
+
+  (org-image-actual-width nil))
+
+
+;; (use-package! org-tree-slide
+;;   :custom
+;;   (org-image-actual-width nil))
+
+;; (use-package! visual-fill-column
+;;   :config
+;;   (setq-default visual-fill-column-width 110
+;;         visual-fill-column-center-text t)
+;;   )
+;; Configure fill width
+;; (defun my/org-present-start ()
+;;   ;; Center the presentation and wrap lines
+;;   (setq visual-fill-column-width '210
+;;         visual-fill-column-center-text t)
+;;   (visual-fill-column-mode 1)
+;;   (visual-line-mode 1))
+
+;; (defun my/org-present-end ()
+;;   ;; Stop centering the document
+;;   (visual-fill-column-mode 0)
+;;   (visual-line-mode 0))
+
+;; Set reusable font name variables
+(defvar my/fixed-width-font "JetBrains Mono"
+  "The font to use for monospaced (fixed width) text.")
+
+(defvar my/variable-width-font "Iosevka Aile"
+  "The font to use for variable-pitch (document) text.")
+
+;; NOTE: These settings might not be ideal for your machine, tweak them as needed!
+;; (set-face-attribute 'default nil :font my/fixed-width-font :weight 'light :height 180)
+;; (set-face-attribute 'fixed-pitch nil :font my/fixed-width-font :weight 'light :height 190)
+;; (set-face-attribute 'variable-pitch nil :font my/variable-width-font :weight 'light :height 1.3)
+
+;;; Org Mode Appearance ------------------------------------
+
+;; Load org-faces to make sure we can set appropriate faces
+(require 'org-faces)
+
+;; Hide emphasis markers on formatted text
+(setq org-hide-emphasis-markers t)
+
+;; Resize Org headings
+(dolist (face '((org-level-1 . 1.2)
+                (org-level-2 . 1.1)
+                (org-level-3 . 1.05)
+                (org-level-4 . 1.0)
+                (org-level-5 . 1.1)
+                (org-level-6 . 1.1)
+                (org-level-7 . 1.1)
+                (org-level-8 . 1.1)))
+  ;; (set-face-attribute (car face) nil :font my/variable-width-font :weight 'medium :height (cdr face))
+  )
+
+;; Make the document title a bit bigger
+;; (set-face-attribute 'org-document-title nil :font my/variable-width-font :weight 'bold :height 1.3)
+
+;; Make sure certain org faces use the fixed-pitch face when variable-pitch-mode is on
+                                        ;(set-face-attribute 'org-block :foreground nil :inherit 'fixed-pitch)
+                                        ;(set-face-attribute 'org-table :inherit 'fixed-pitch)
+                                        ;(set-face-attribute 'org-formula :inherit 'fixed-pitch)
+                                        ;(set-face-attribute 'org-code :inherit '(shadow fixed-pitch))
+                                        ;(set-face-attribute 'org-verbatim :inherit '(shadow fixed-pitch))
+                                        ;(set-face-attribute 'org-special-keyword :inherit '(font-lock-comment-face fixed-pitch))
+                                        ;(set-face-attribute 'org-meta-line :inherit '(font-lock-comment-face fixed-pitch))
+                                        ;(set-face-attribute 'org-checkbox :inherit 'fixed-pitch)
+
+;;; Centering Org Documents --------------------------------
+
+;; Configure fill width
+
+;;; Org Present --------------------------------------------
+
+;; Install org-present if needed
+;; Register hooks with org-present
+
+;; (defun my/org-present-prepare-slide (buffer-name heading)
+;;   ;; Show only top-level headlines
+;;   (org-overview)
+
+;;   ;; Unfold the current entry
+;;   (org-show-entry)
+
+;;   ;; Show only direct subheadings of the slide but don't expand them
+;;   (org-show-children))
+
+;; (defun my/org-present-start ()
+;;   ;; Tweak font sizes
+;;   (setq-local face-remapping-alist '((default (:height 1.5) variable-pitch)
+;;                                      (header-line (:height 4.0) variable-pitch)
+;;                                      (org-document-title (:height 1.75) org-document-title)
+;;                                      (org-code (:height 1.55) org-code)
+;;                                      (org-verbatim (:height 1.55) org-verbatim)
+;;                                      (org-block (:height 1.25) org-block)
+;;                                      (org-block-begin-line (:height 0.7) org-block)))
+
+;;   ;; Set a blank header line string to create blank space at the top
+;;   (setq header-line-format " ")
+
+;;   ;; Display inline images automatically
+;;   (org-display-inline-images)
+
+;;   ;; Center the presentation and wrap lines
+;;   ;; (visual-fill-column-mode 1)
+;;   ;; (visual-line-mode 1)
+;;   )
+
+;; (defun my/org-present-end ()
+;;   ;; Reset font customizations
+;;   (setq-local face-remapping-alist '((default variable-pitch default)))
+
+;;   ;; Clear the header line string so that it isn't displayed
+;;   (setq header-line-format nil)
+
+;;   ;; Stop displaying inline images
+;;   (org-remove-inline-images)
+
+;;   ;; Stop centering the document
+;;   ;; (visual-fill-column-mode 0)
+;;   (visual-line-mode 0))
+
+
+;; (use-package! org-present
+;;   :config
+;;   ;; (add-hook 'org-present-mode-hook 'my/org-present-start)
+;;   ;; (add-hook 'org-present-mode-quit-hook 'my/org-present-end)
+;;   ;; (setq visual-fill-column-width 110
+;;   ;;       visual-fill-column-center-text t)
+
+;;   ;; Turn on variable pitch fonts in Org Mode buffers
+;;   ;; (add-hook 'org-mode-hook 'variable-pitch-mode)
+
+;;   ;; Register hooks with org-present
+;;   (add-hook 'org-present-mode-hook 'my/org-present-start)
+;;   (add-hook 'org-present-mode-quit-hook 'my/org-present-end)
+;;   (add-hook 'org-present-after-navigate-functions 'my/org-present-prepare-slide)
+;;   )
+
+
+;; (add-to-list 'default-frame-alist '(fullscreen . maximized))
+
+(use-package! ponylang-mode
+  :ensure t
+  :init
+  (setq ponylang-banner 1)
+  :config
+  :bind-keymap
+  ("<f6>" . ponylang-menu))
+;; (setq create-lockfiles nil)
+(add-to-list 'load-path (expand-file-name "~/.doom.d"))
+;; (autoload 'vala-mode "vala-mode" "Major mode for editing Vala code." t)
+;; (add-to-list 'auto-mode-alist '("\\.vala$" . vala-mode))
+;; (add-to-list 'auto-mode-alist '("\\.vapi$" . vala-mode))
+;; (add-to-list 'file-coding-system-alist '("\\.vala$" . utf-8))
+;; (add-to-list 'file-coding-system-alist '("\\.vapi$" . utf-8))
+
+;; (load (expand-file-name "~/quicklisp/slime-helper.el"))
+;; (setq inferior-lisp-program "sbcl")
+
+(use-package! nix-mode
+  :mode "\\.nix\\'")
+
+;; (add-to-list 'load-path "~/.doom.d/packages/emacs-reveal")
+;; (require 'emacs-reveal)
+;; (setq tree-sitter-langs-git-dir (straight--repos-dir "tree-sitter-langs"))
+
+(custom-set-variables
+ `(conda-anaconda-home ,(expand-file-name "~/miniforge3/")))
+
+;; (conda-mode-line-setup)
+(pyvenv-workon "gw3.11")
+
+(use-package! groovy-mode)
+(use-package! jenkinsfile-mode)
+(use-package! terraform-mode)
